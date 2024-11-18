@@ -33,7 +33,7 @@ public class HttpRequest
                 var values = requestParts[i].Split(" ");
                 if (values.Length != 2)
                 {
-                    System.Console.WriteLine($"Header problem with {requestParts[i]}");
+                    Console.WriteLine($"Header problem with {requestParts[i]}");
                 }
                 request.Headers.Add(values[0].Replace(":", ""), values[1]);
             }

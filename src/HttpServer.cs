@@ -4,7 +4,7 @@ using System.Text;
 
 public class HttpServer
 {
-    private readonly Dictionary<string, Func<HttpRequest, string>> Routes;
+    readonly Dictionary<string, Func<HttpRequest, string>> Routes;
 
     TcpListener TcpServer = null!;
     int Port;
@@ -32,7 +32,7 @@ public class HttpServer
 
     void Run()
     {
-        System.Console.WriteLine($"Server started at port : {Port}");
+        Console.WriteLine($"Server started at port : {Port}");
         while (true)
         {
             var socket = TcpServer.AcceptSocket();
@@ -55,18 +55,15 @@ public class HttpServer
         try
         {
             var request = HttpRequest.TryCreate(requestString);
-            System.Console.WriteLine(requestString);
+            Console.WriteLine(requestString);
 
             var handler = RouteHandler(request.Method, request.Path);
 
-            if (handler == null)
-                msg = HttpResponses.NotFound();
-            else
-                msg = handler(request);
+            msg = handler == null ? HttpResponses.NotFound() : handler(request);
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
-            System.Console.WriteLine(e.Message);
+            Console.WriteLine(e.Message);
             msg = HttpResponses.BadRequest(e.Message);
         }
 
@@ -75,8 +72,9 @@ public class HttpServer
         socket.Close();
     }
 
-    private Func<HttpRequest, string>? RouteHandler(HttpMethod method, string path)
+    Func<HttpRequest, string>? RouteHandler(HttpMethod method, string path)
     {
+        path = path.TrimEnd('/');
         var routeKey = $"{method}:{path}";
 
         return Routes.GetValueOrDefault(routeKey);
@@ -88,14 +86,31 @@ public class HttpServer
     /// <param name="method">The http method GET, POST etc.</param>
     /// <param name="path">The endpoint path e.g : "/api/users/getuser"</param>
     /// <param name="handler">The endpoint action handler</param>
-    public void AddRoute(HttpMethod method, string path, Func<HttpRequest, string> handler)
+    public void AddEnpoints(HttpMethod method, string path, Func<HttpRequest, string> handler)
     {
+        path = path.TrimEnd('/').Replace(" ", "");
         var routeKey = $"{method}:{path}";
 
         if (Routes.ContainsKey(routeKey))
             throw new Exception($"This route already exist for method {method} !");
 
         Routes.Add(routeKey, handler);
+    }
+
+    public void AddRouter(Router router)
+    {
+        foreach (var endpoint in router.endPoints)
+        {
+            var routeKey = endpoint.Key;
+
+            if (Routes.ContainsKey(routeKey))
+            {
+                Console.WriteLine($"This route already exists for method this method!");
+                continue;
+            }
+
+            Routes.Add(routeKey, endpoint.Value);
+        }
     }
 
     /// <summary>
