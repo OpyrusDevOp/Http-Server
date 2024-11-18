@@ -1,12 +1,28 @@
-﻿// Create the HTTP server instance
+﻿using Http_Server;
+
+// Create the HTTP server instance
 var app = new HttpServer(3000);
 
 // Create the main API router
-var apiRouter = new Router("/api");
+var apiRouter = new Router("api");
 
 // Add endpoints to the API router
+
+
 apiRouter.AddEndpoint(
-    HttpMethod.GET,
+    HttpMethods.GET,
+    req =>
+    {
+        var id = req.Params["id"];
+        Console.WriteLine(req.Params["id"]);
+
+        return HttpResponses.Ok($"Request data of id {id}");
+    },
+    "/{id}"
+);
+
+apiRouter.AddEndpoint(
+    HttpMethods.GET,
     req =>
     {
         return HttpResponses.View("index.html");
@@ -14,7 +30,7 @@ apiRouter.AddEndpoint(
 );
 
 apiRouter.AddEndpoint(
-    HttpMethod.POST,
+    HttpMethods.POST,
     req =>
     {
         var body = req.Body;
@@ -27,7 +43,7 @@ apiRouter.AddEndpoint(
 var authRouter = new Router("/auth");
 
 authRouter.AddEndpoint(
-    HttpMethod.GET,
+    HttpMethods.GET,
     req =>
     {
         return HttpResponses.Ok("Login Page");
@@ -36,7 +52,7 @@ authRouter.AddEndpoint(
 );
 
 authRouter.AddEndpoint(
-    HttpMethod.POST,
+    HttpMethods.POST,
     req =>
     {
         var body = req.Body;
@@ -52,7 +68,7 @@ apiRouter.AddSubRoute(authRouter);
 var userRouter = new Router("/user");
 
 userRouter.AddEndpoint(
-    HttpMethod.GET,
+    HttpMethods.GET,
     req =>
     {
         return HttpResponses.Ok("User Profile");
@@ -60,7 +76,7 @@ userRouter.AddEndpoint(
     "/profile"
 );
 userRouter.AddEndpoint(
-    HttpMethod.PUT,
+    HttpMethods.PUT,
     req =>
     {
         var body = req.Body;

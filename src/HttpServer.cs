@@ -2,9 +2,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
+namespace Http_Server;
+
 public class HttpServer
 {
-    readonly Dictionary<string, Func<HttpRequest, string>> Routes;
+    Dictionary<string, Func<HttpRequest, string>> Routes;
 
     TcpListener TcpServer = null!;
     int Port;
@@ -16,7 +18,18 @@ public class HttpServer
     public HttpServer(int port)
     {
         Port = port;
-        Routes = new();
+        Routes = new Dictionary<string, Func<HttpRequest, string>>
+        {
+            {
+                "GET:/css/{css}",
+                req =>
+                {
+                    if (req.Params == null || !req.Params.TryGetValue("css", out var css))
+                        return HttpResponses.NotFound();
+                    return HttpResponses.View($"css/{css}");
+                }
+            },
+        };
     }
 
     ///<summary>
@@ -46,7 +59,6 @@ public class HttpServer
         var requestByte = new byte[1024];
         socket.Receive(requestByte);
         var requestString = Encoding.UTF8.GetString(requestByte);
-        var requestParts = requestString.Split("\r\n");
 
         //var msg = new byte[0];
 
@@ -57,42 +69,108 @@ public class HttpServer
             var request = HttpRequest.TryCreate(requestString);
             Console.WriteLine(requestString);
 
-            var handler = RouteHandler(request.Method, request.Path);
+            var handler = RouteHandler(
+                request.Methods,
+                request.Path,
+                out Dictionary<string, object> parameters
+            );
+
+            request.Params = parameters;
 
             msg = handler == null ? HttpResponses.NotFound() : handler(request);
+            var response = Encoding.UTF8.GetBytes(msg);
+            socket.Send(response);
         }
         catch (Exception e)
         {
             Console.WriteLine(e.Message);
-            msg = HttpResponses.BadRequest(e.Message);
         }
 
-        var response = Encoding.UTF8.GetBytes(msg);
-        socket.Send(response, 0, response.Length, SocketFlags.None);
+        
+        socket.Shutdown(SocketShutdown.Both);
         socket.Close();
+
     }
 
-    Func<HttpRequest, string>? RouteHandler(HttpMethod method, string path)
+    Func<HttpRequest, string>? RouteHandler(
+        HttpMethods method,
+        string path,
+        out Dictionary<string, object> parameters
+    )
     {
         path = path.TrimEnd('/');
-        var routeKey = $"{method}:{path}";
 
-        return Routes.GetValueOrDefault(routeKey);
+        Dictionary<string, object> requestParams = new();
+        var handler = Routes.FirstOrDefault(r =>
+        {
+            
+            var requestSegments = path.Split("/");
+            var endpointSegments = r.Key.Split(":");
+
+            if (endpointSegments[0] != method.ToString()) return false;
+            
+            var routeSegments = endpointSegments[1].Split("/");
+
+            if (routeSegments.Length != requestSegments.Length)
+                return false;
+            for (var i = 0; i < routeSegments.Length; i++)
+            {
+                if (routeSegments[i].StartsWith("{") && routeSegments[i].EndsWith("}"))
+                {
+                    var paramName = routeSegments[i][1..^1];
+                    var paramValue = requestSegments[i];
+                    //System.Console.WriteLine($"{paramName} = {paramValue}");
+                    requestParams.Add(paramName, paramValue);
+                }
+                else if (i == routeSegments.Length - 1)
+                {
+                    var segmentParts = requestSegments[i].Split("?");
+
+                    if (segmentParts[0] != routeSegments[i])
+                        return false;
+                    if (segmentParts.Length < 2)
+                        continue;
+
+                    var queryParameters = segmentParts[1].Split("&");
+
+                    foreach (var query in queryParameters)
+                    {
+                        var keyValue = query.Split("=");
+
+                        if (keyValue.Length < 2)
+                            continue;
+
+                        requestParams.Add(keyValue[0], keyValue[1]);
+                    }
+                }
+                else if (routeSegments[i] != requestSegments[i])
+                {
+                    requestParams = new();
+                    
+                    return false;
+                }
+            }
+
+            return true;
+        });
+        parameters = requestParams;
+
+        return handler.Value;
     }
 
     /// <summary>
     /// For adding route to the HttpServer
     /// </summary>
-    /// <param name="method">The http method GET, POST etc.</param>
+    /// <param name="methods">The http method GET, POST etc.</param>
     /// <param name="path">The endpoint path e.g : "/api/users/getuser"</param>
     /// <param name="handler">The endpoint action handler</param>
-    public void AddEnpoints(HttpMethod method, string path, Func<HttpRequest, string> handler)
+    public void AddEnpoints(HttpMethods methods, string path, Func<HttpRequest, string> handler)
     {
         path = path.TrimEnd('/').Replace(" ", "");
-        var routeKey = $"{method}:{path}";
+        var routeKey = $"{methods}:{path}";
 
         if (Routes.ContainsKey(routeKey))
-            throw new Exception($"This route already exist for method {method} !");
+            throw new Exception($"This route already exist for method {methods} !");
 
         Routes.Add(routeKey, handler);
     }

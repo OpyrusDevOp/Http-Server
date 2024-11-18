@@ -1,9 +1,12 @@
+namespace  Http_Server{
+
 public class HttpRequest
 {
-    public HttpMethod Method { get; set; }
+    public HttpMethods Methods { get; set; }
     public string Path { get; set; } = null!;
     public string HttpVersion { get; set; } = null!;
     public Dictionary<string, string> Headers { get; set; } = null!;
+    public Dictionary<string, object>? Params { get; set; }
     public object? Body { get; set; }
 
     public static HttpRequest TryCreate(string requestMessage)
@@ -19,7 +22,7 @@ public class HttpRequest
         {
             var request = new HttpRequest();
 
-            request.Method = Enum.Parse<HttpMethod>(requestLine[0].ToUpper());
+            request.Methods = Enum.Parse<HttpMethods>(requestLine[0].ToUpper());
             request.Path = requestLine[1];
             request.HttpVersion = requestLine[2];
 
@@ -43,7 +46,7 @@ public class HttpRequest
     }
 }
 
-public enum HttpMethod
+public enum HttpMethods
 {
     GET,
     POST,
@@ -53,4 +56,5 @@ public enum HttpMethod
     OPTIONS,
     TRACE,
     CONNECT,
+}
 }

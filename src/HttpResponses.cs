@@ -1,3 +1,5 @@
+namespace Http_Server;
+
 public static class HttpResponses
 {
     public static string View(string pageName)

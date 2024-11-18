@@ -1,3 +1,4 @@
+namespace  Http_Server;
 public class Router
 {
     string Path;
@@ -6,13 +7,14 @@ public class Router
     {
         // Ensure the base path does not have a trailing slash (except for the root "/")
         Path = path.EndsWith("/") && path.Length > 1 ? path.TrimEnd('/').Replace(" ", "") : path;
+        if(!Path.StartsWith("/")) Path = "/" + Path;
     }
 
     Dictionary<string, Func<HttpRequest, string>> EndPoints = new();
 
     public Dictionary<string, Func<HttpRequest, string>> endPoints => EndPoints;
 
-    public void AddEndpoint(HttpMethod method, Func<HttpRequest, string> handler, string path = "/")
+    public void AddEndpoint(HttpMethods methods, Func<HttpRequest, string> handler, string path = "/")
     {
         // Ensure the path starts with a single slash
         if (!path.StartsWith("/"))
@@ -22,10 +24,10 @@ public class Router
 
         // Combine and sanitize the route
         var combinedPath = $"{Path}{path}".Replace("//", "/").TrimEnd('/');
-        var routeKey = $"{method}:{combinedPath}";
+        var routeKey = $"{methods}:{combinedPath}";
 
         if (EndPoints.ContainsKey(routeKey))
-            throw new Exception($"This route already exists for method {method}!");
+            throw new Exception($"This route already exists for method {methods}!");
 
         EndPoints.Add(routeKey, handler);
     }
