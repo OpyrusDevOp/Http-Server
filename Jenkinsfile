@@ -35,7 +35,7 @@ pipeline {
                 sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
             }
         }
-
+        //
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(
@@ -49,7 +49,7 @@ pipeline {
                 }
             }
         }
-
+        //
         stage('Deploy') {
             steps {
                 withCredentials([usernamePassword(
@@ -71,6 +71,5 @@ pipeline {
     post {
         success { echo "Déployé avec succès — build #${env.BUILD_NUMBER}" }
         failure  { echo 'Pipeline échoué.' }
-        always   { sh 'docker logout || true' }
     }
 }
