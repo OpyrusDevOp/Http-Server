@@ -31,8 +31,14 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
+                    sh "docker tag ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_USER}/${IMAGE_NAME}:latest"
+                }
             }
         }
         //
@@ -43,13 +49,14 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh "docker login -u $DOCKER_USER -p $DOCKER_PASS"
-                    sh "docker push $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker push $DOCKER_USER/${IMAGE_NAME}:latest"
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push $DOCKER_USER/''' + env.IMAGE_NAME + ''':''' + env.IMAGE_TAG + '''
+                        docker push $DOCKER_USER/''' + env.IMAGE_NAME + ''':latest
+                    '''
                 }
             }
-        }
-        //
+        } 
         stage('Deploy') {
             steps {
                 withCredentials([usernamePassword(
